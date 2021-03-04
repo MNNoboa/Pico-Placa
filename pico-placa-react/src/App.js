@@ -1,8 +1,7 @@
-// import logo from './logo.svg';
 import './App.css';
 import { useEffect, useReducer, useState } from 'react';
 
-const regExDict = {
+const regExDict = {                                            //RegEx for validation and parsing
   pn_RegEx: /^([a-zA-Z]{3}\d{3,4}$|^\d{3,4}$)/,
   shortdate_RegEx: /^\d{1,2}[-/]+\d{1,2}$/,
   longdate_RegEx: /^\d{1,2}[-/]+\d{1,2}[-/]+(\d{2}|\d{4})$/,
@@ -11,7 +10,7 @@ const regExDict = {
   invalid_date_RegEx: /(?=[^a-zA-Z/-])(?=\D)./g
 }
 
-const initDateTime = new Date();
+const initDateTime = new Date();                              //Initializes with current DateTime
 
 function App() {
 
@@ -26,9 +25,9 @@ function App() {
     show_Error: false,
   })
 
-  const [outcome, setOutcome] = useState(undefined)
+  const [outcome, setOutcome] = useState(undefined)          //Final outcome updates after all other updates (inputs and validations)
 
-  function cleanInput(item,regex){
+  function cleanInput(item,regex){                            
     return item.replace(regex,'');
   }
 
@@ -54,7 +53,6 @@ function App() {
         let d_alter = d.split(regExDict.date_separator_RegEx);
         let validity = true;
         if(lacksYear){
-          // d_alter = d.substring(3,5) + '/' + d.substring(0,2);
           d_alter = d_alter[1] + '/' + d_alter[0] + '/' + initDateTime.getFullYear().toString(); 
           dateTime = new Date(d_alter);
         }
@@ -75,7 +73,7 @@ function App() {
       case 'time_change':
         let t = action.payload;
         if(t.length===0)
-          return {time_valid:false,time:action.payload}
+          return Object.assign({},state,{time_valid:false,time:action.payload});
         t = t.split(':');
         let dt = state.DateTime;
         if(!dt)
@@ -87,35 +85,46 @@ function App() {
     }
   }
 
-  function onTheRoad(){
-    if(!state.pn_valid)
-      return undefined
+  useEffect(() => {                                                     //Final outcome updates after all other updates (inputs and validations)
+    if(!state.pn_valid){                                                //Update function includes all 'Pico&Placa' logic
+      setOutcome(undefined);
+      return;
+    }      
     const lastChar = parseInt(state.plate_number.slice(-1))
     const dt = state.DateTime;
     let daycheck = false;
     if(2*dt.getDay()-1 === lastChar || 2*dt.getDay() === lastChar)
       daycheck = true;
-    console.log('outcome',daycheck,dt.getDay())
     if(daycheck)
-      if((dt.getHours()>=7&&dt.getHours()<9)||(dt.getHours()>=16 && dt.getHours()<19))
-        return 2;
+      if((dt.getHours()>=7 && dt.getHours() < 9) || (dt.getHours() >= 16 && dt.getHours() < 19))
+        setOutcome(2);
       else if ((dt.getHours === 9 && dt.getMinutes < 30) || (dt.getHours() === 19 && dt.getMinutes() < 30 ))
-        return 2;
+        setOutcome(2);
       else
-        return 1;
+        setOutcome(1);
     else
-      return 0;
-  }
-
-  useEffect(() => {
-    setOutcome(onTheRoad())
+      setOutcome(0);
   }, [state])
 
   return (
     <div className="App">
-      {/* <header className="App-header"> */}
-        {/* <img src={logo} className="App-logo" alt="logo" />         */}
-      {/* </header> */}
+      
+      <div className="App-body">
+        <h1>Pico&Placa predictor</h1>
+        {state.DateTime &&
+          <div className="App-info">
+            <p>Date Time: {state.DateTime.toDateString() + ' - ' + state.DateTime.getHours()+':'+state.DateTime.getMinutes()}</p>
+          </div>
+        }
+      </div>
+
+      {outcome === 2 && <div className= "App-info-red">You can not go out</div>}
+      {outcome === 1 && 
+      <div className= "App-info-yellow">
+        <p>You may go out at the selected time, but not on restricted hours</p>
+        <p>Restricted Hours are <b>7:00 - 9:30 am</b> and <b>16:00-19:30 pm</b></p>
+      </div>}
+      {outcome === 0 && <div className= "App-info-green">You can go out freely</div>}
 
       <div className="App-body">
         <div className="Input-cell">
@@ -147,23 +156,6 @@ function App() {
         </div>
                 
       </div>
-
-      {outcome === 2 && <div className= "App-info-red">You can not go out</div>}
-      {outcome === 1 && 
-      <div className= "App-info-yellow">
-        <p>You may go out at the selected time, but not on restricted hours</p>
-        <p>Restricted Hours are <b>7:00 - 9:30 am</b> and <b>16:00-19:30 pm</b></p>
-      </div>}
-      {outcome === 0 && <div className= "App-info-green">You can go out freely</div>}
-
-      <div className="App-body">
-        <h1>Pico&Placa predictor</h1>
-        {state.DateTime &&
-          <div className="App-info">
-            <p>Date Time: {state.DateTime.toDateString() + ' - ' + state.DateTime.getHours()+':'+state.DateTime.getMinutes()}</p>
-          </div>
-        }
-      </div>
       
       <footer>
         App made by <a
@@ -173,7 +165,6 @@ function App() {
         >
           MNNoboa 
         </a> according to <a
-          // className="App-link"
           href="https://www.eluniverso.com/2010/05/03/1/1447/desde-hoy-rige-pico-placa-vias-quitenas.html/"
           target="_blank"
           rel="noopener noreferrer"
