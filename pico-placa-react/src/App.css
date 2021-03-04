@@ -1,5 +1,8 @@
 .App {
   text-align: center;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-evenly;
 }
 
 .App-logo {
@@ -15,14 +18,16 @@
 
 .App-body {
   background-color: #282c34;
-  min-height: 100vh;
+  min-height: 50vh;
   display: flex;
-  flex-direction: column;
+    
+  flex-direction:row;
   align-items: center;
-  justify-content: center;
+  justify-content: space-evenly;
   font-size: calc(10px + 2vmin);
   color: white;
 }
+
 
 .App-link {
   color: #61dafb;
@@ -37,12 +42,44 @@
   }
 }
 
+.Input-cell {
+  display: flex;
+  flex-direction: column;
+}
+
 .App-input {
   text-align: center;
+  height:calc(10px + 2vmin);;
 }
 
 .App-error {
   text-align: center;
   font-size: calc(10px + 1vmin);
   color: red;
+}
+
+.App-info {
+  color:lightgray;
+  border: 1px solid lightgray;
+  padding: 0vmin 5vmin 0vmin 5vmin;
+  margin: 1vmin;
+}
+
+
+.App-info-green {
+  background-color: lightgreen;
+  padding: 5vmin;
+  font-size: calc(10px + 3vmin);
+}
+
+.App-info-yellow {
+  background-color: rgb(105, 127, 11);
+  padding: 5vmin;
+  font-size: calc(10px + 3vmin);
+}
+
+.App-info-red {
+  background-color: rgb(127, 38, 11);
+  padding: 5vmin;
+  font-size: calc(10px + 3vmin);
 }

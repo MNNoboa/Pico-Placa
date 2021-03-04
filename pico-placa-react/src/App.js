@@ -1,11 +1,12 @@
 // import logo from './logo.svg';
 import './App.css';
-import { useReducer } from 'react';
+import { useEffect, useReducer, useState } from 'react';
 
 const regExDict = {
   pn_RegEx: /^([a-zA-Z]{3}\d{3,4}$|^\d{3,4}$)/,
-  shortdate_RegEx: /^\d{2}[-/]{1}\d{2}$/,
-  longdate_RegEx: /^\d{2}[-/]{1}\d{2}[-/]{1}(\d{2}|\d{4})$/,
+  shortdate_RegEx: /^\d{1,2}[-/]+\d{1,2}$/,
+  longdate_RegEx: /^\d{1,2}[-/]+\d{1,2}[-/]+(\d{2}|\d{4})$/,
+  date_separator_RegEx: /[-/]+/g,
   invalid_pn_RegEx: /(?=[^a-zA-Z])(?=\D)./g,
   invalid_date_RegEx: /(?=[^a-zA-Z/-])(?=\D)./g
 }
@@ -14,20 +15,18 @@ const initDateTime = new Date();
 
 function App() {
 
-  function init(_initValue){
-    return {
-      plate_number: '',
-      date: '',
-      time: '',
-      DateTime: initDateTime,
-      pn_valid: false,
-      date_valid: false,
-      time_valid: false,
-      show_Error: false
-    }
-  }
-  
-  const [state, dispatch] = useReducer(reducer, {}, init)
+  const [state, dispatch] = useReducer(reducer, {
+    plate_number: '',
+    date: '',
+    time: '',
+    DateTime: initDateTime,
+    pn_valid: false,
+    date_valid: false,
+    time_valid: false,
+    show_Error: false,
+  })
+
+  const [outcome, setOutcome] = useState(undefined)
 
   function cleanInput(item,regex){
     return item.replace(regex,'');
@@ -37,35 +36,80 @@ function App() {
     switch(action.type){
       case 'pn_change':
         const pn = cleanInput(action.payload,regExDict.invalid_pn_RegEx);
-        return {pn_valid:regExDict.pn_RegEx.test(pn),plate_number:pn}
+        return Object.assign({},state,{pn_valid:regExDict.pn_RegEx.test(pn),plate_number:pn})
+      
       case 'date_change':        
         const d = cleanInput(action.payload,regExDict.invalid_date_RegEx);
         let dateTime = new Date(d);
 
-        if (!isNaN(dateTime.getDay()))
-          return {DateTime:dateTime,date_valid:true,date:d};
+        const lacksYear = regExDict.shortdate_RegEx.test(d);
+
+        if (!isNaN(dateTime.getDay())){
+          dateTime.setHours(state.DateTime.getHours(),state.DateTime.getMinutes())
+          if(lacksYear)
+            dateTime.setFullYear(initDateTime.getFullYear());
+          return Object.assign({},state,{DateTime:dateTime,date_valid:true,date:d});
+        }
         
-        if(regExDict.shortdate_RegEx.test(d)){
-          let d_alter = d.substring(3,5) + '/' + d.substring(0,2);
+        let d_alter = d.split(regExDict.date_separator_RegEx);
+        let validity = true;
+        if(lacksYear){
+          // d_alter = d.substring(3,5) + '/' + d.substring(0,2);
+          d_alter = d_alter[1] + '/' + d_alter[0] + '/' + initDateTime.getFullYear().toString(); 
           dateTime = new Date(d_alter);
-          dateTime.setFullYear(initDateTime.getFullYear());
-          return {DateTime:dateTime,date_valid:isNaN(dateTime.getDay()),date:d};
         }
         if(regExDict.longdate_RegEx.test(d)){
-          let d_alter = d.substring(3,5) + '/' + d.substring(0,2) + '/' + d.substring(6,10);
+          d_alter = d_alter[1] + '/' + d_alter[0] + '/' + d_alter[2];
           dateTime = new Date(d_alter);
-          return {DateTime:dateTime,date_valid:isNaN(dateTime.getDay()),date:d};
         }
-        return {DateTime:initDateTime, date_valid:false,date:d}
+
+        if(isNaN(dateTime.getDay())){
+          dateTime = initDateTime;
+          validity = false;
+        }          
+        
+        dateTime.setHours(state.DateTime.getHours(),state.DateTime.getMinutes())
+        
+        return Object.assign({},state,{DateTime:dateTime,date_valid:validity,date:d});
                 
       case 'time_change':
-
-        // console.log(typeof action.payload,'['+action.payload+']');
-        return {time_valid:true};
+        let t = action.payload;
+        if(t.length===0)
+          return {time_valid:false,time:action.payload}
+        t = t.split(':');
+        let dt = state.DateTime;
+        if(!dt)
+          dt = initDateTime;
+        dt.setHours(parseInt(t[0]),parseInt(t[1]));
+        return Object.assign({},state,{DateTime:dt, time_valid:true, time:action.payload});
       default:
-        throw new Error();
+        alert('An error has ocurred, please reload.');
     }
   }
+
+  function onTheRoad(){
+    if(!state.pn_valid)
+      return undefined
+    const lastChar = parseInt(state.plate_number.slice(-1))
+    const dt = state.DateTime;
+    let daycheck = false;
+    if(2*dt.getDay()-1 === lastChar || 2*dt.getDay() === lastChar)
+      daycheck = true;
+    console.log('outcome',daycheck,dt.getDay())
+    if(daycheck)
+      if((dt.getHours()>=7&&dt.getHours()<9)||(dt.getHours()>=16 && dt.getHours()<19))
+        return 2;
+      else if ((dt.getHours === 9 && dt.getMinutes < 30) || (dt.getHours() === 19 && dt.getMinutes() < 30 ))
+        return 2;
+      else
+        return 1;
+    else
+      return 0;
+  }
+
+  useEffect(() => {
+    setOutcome(onTheRoad())
+  }, [state])
 
   return (
     <div className="App">
@@ -74,25 +118,49 @@ function App() {
       {/* </header> */}
 
       <div className="App-body">
-        <label>
-          Plate number: <input
-            className="App-input" type="text" value={state.plate_number} 
-            onChange={(e)=>{dispatch({type:'pn_change', payload: e.target.value})}} 
-            placeholder='Full plate or plate numbers'/>
-        </label>
-        {state.pn_valid ? null: state.plate_number && <p className="App-error">Please enter a correct plate number</p>}
-        <label>
-          Date: <input className="App-input" type="text" value={state.date} 
+        <div className="Input-cell">
+          <label>
+            Plate number:
+          </label>
+          <input
+          className="App-input" type="text" value={state.plate_number} 
+          onChange={(e)=>{dispatch({type:'pn_change', payload: e.target.value})}} 
+          placeholder='Full plate or plate numbers'/>
+          {(!state.pn_valid && state.plate_number !== '') && <p className="App-error">Please enter a correct plate number</p>}
+        </div>
+        
+        <div className="Input-cell">
+          <label>
+            Date:
+          </label>
+          <input className="App-input" type="text" value={state.date} 
           onChange={(e)=>{dispatch({type:'date_change', payload: e.target.value})}} 
           placeholder='MM/dd/YYYY'/>
-        </label>
-        <label>
-          Time: <input className="App-input" type="time" value={state.time} 
+          {(!state.date_valid && state.date !== '') && <p className="App-error">Please enter a correct date in MM/dd/YYYY format</p>}
+        </div>
+        <div className="Input-cell">
+          <label>
+            Time:
+          </label>
+          <input className="App-input" type="time" value={state.time} 
           onChange={(e)=>{dispatch({type:'time_change', payload: e.target.value})}} />
-        </label>
+        </div>
+                
+      </div>
+
+      {outcome === 2 && <div className= "App-info-red">You can not go out</div>}
+      {outcome === 1 && 
+      <div className= "App-info-yellow">
+        <p>You may go out at the selected time, but not on restricted hours</p>
+        <p>Restricted Hours are <b>7:00 - 9:30 am</b> and <b>16:00-19:30 pm</b></p>
+      </div>}
+      {outcome === 0 && <div className= "App-info-green">You can go out freely</div>}
+
+      <div className="App-body">
+        <h1>Pico&Placa predictor</h1>
         {state.DateTime &&
-          <div>
-            <p>{state.DateTime.toString()}</p>
+          <div className="App-info">
+            <p>Date Time: {state.DateTime.toDateString() + ' - ' + state.DateTime.getHours()+':'+state.DateTime.getMinutes()}</p>
           </div>
         }
       </div>
