@@ -95,6 +95,8 @@ function App() {
     let daycheck = false;
     if(2*dt.getDay()-1 === lastChar || 2*dt.getDay() === lastChar)
       daycheck = true;
+    else if(dt.getDay()===5 && lastChar === 0)
+      daycheck = true;
     if(daycheck)
       if((dt.getHours()>=7 && dt.getHours() < 9) || (dt.getHours() >= 16 && dt.getHours() < 19))
         setOutcome(2);
